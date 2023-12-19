@@ -56,14 +56,23 @@ developers := List(
   )
 )
 
+assembly / assemblyMergeStrategy := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
+
 resolvers += Resolver.mavenLocal
 
 libraryDependencies ++= Seq(
-  "org.isarnproject" % "isarn-sketches-java" % "0.3.0",
-  "org.apache.spark" %% "spark-core" % sparkVersion % Provided,
-  "org.apache.spark" %% "spark-sql" % sparkVersion % Provided,
-  "org.apache.spark" %% "spark-mllib" % sparkVersion % Provided,
+  "io.airlift" % "slice" % "0.44",
+  "io.airlift" % "stats" % "219",
+  "org.apache.spark" %% "spark-core" % sparkVersion,
+  "org.apache.spark" %% "spark-sql" % sparkVersion,
+  "org.apache.spark" %% "spark-mllib" % sparkVersion,
   "com.lihaoyi" %% "utest" % "0.7.4" % Test)
+
+libraryDependencies += "com.google.guava" % "guava" % "31.1-jre"
+
 
 // tell sbt about utest
 testFrameworks += new TestFramework("utest.runner.Framework")
@@ -74,21 +83,21 @@ testFrameworks += new TestFramework("utest.runner.Framework")
 parallelExecution in Test := false
 
 initialCommands in console := """
-  |import org.apache.spark.SparkConf
-  |import org.apache.spark.SparkContext
-  |import org.apache.spark.sql.SparkSession
-  |import org.apache.spark.SparkContext._
-  |import org.apache.spark.rdd.RDD
-  |import org.apache.spark.ml.linalg.Vectors
-  |import org.apache.spark.sql.functions._
-  |import org.isarnproject.sketches.java.TDigest
-  |import org.isarnproject.sketches.spark._
-  |val initialConf = new SparkConf().setAppName("repl")
-  |val spark = SparkSession.builder.config(initialConf).master("local[2]").getOrCreate()
-  |import spark._, spark.implicits._
-  |val sc = spark.sparkContext
-  |import org.apache.log4j.{Logger, ConsoleAppender, Level}
-  |Logger.getRootLogger().getAppender("console").asInstanceOf[ConsoleAppender].setThreshold(Level.WARN)
+                                |import org.apache.spark.SparkConf
+                                |import org.apache.spark.SparkContext
+                                |import org.apache.spark.sql.SparkSession
+                                |import org.apache.spark.SparkContext._
+                                |import org.apache.spark.rdd.RDD
+                                |import org.apache.spark.ml.linalg.Vectors
+                                |import org.apache.spark.sql.functions._
+                                |import org.isarnproject.sketches.java.TDigest
+                                |import org.isarnproject.sketches.spark._
+                                |val initialConf = new SparkConf().setAppName("repl")
+                                |val spark = SparkSession.builder.config(initialConf).master("local[2]").getOrCreate()
+                                |import spark._, spark.implicits._
+                                |val sc = spark.sparkContext
+                                |import org.apache.log4j.{Logger, ConsoleAppender, Level}
+                                |Logger.getRootLogger().getAppender("console").asInstanceOf[ConsoleAppender].setThreshold(Level.WARN)
 """.stripMargin
 
 cleanupCommands in console := "spark.stop"
@@ -108,11 +117,12 @@ mappings in (Compile, packageBin) ++= Seq(
 )
 
 test in assembly := {}
-
 assemblyShadeRules in assembly := Seq(
+  ShadeRule.rename("com.google.common.**" -> "com.nexthink.shaded.guava.@1").inAll,
   ShadeRule.zap("scala.**").inAll,
   ShadeRule.zap("org.slf4j.**").inAll
 )
+
 
 scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/root-doc.txt")
 

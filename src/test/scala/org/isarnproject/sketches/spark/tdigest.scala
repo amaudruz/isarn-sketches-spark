@@ -63,7 +63,7 @@ object TDigestAggregationSuite extends SparkTestSuite {
   val tests = Tests {
     test("TDigestAggregator") {
       assert(data1.rdd.partitions.size > 1)
-      val udf = TDigestAggregator.udf[Double](compression = 0.25, maxDiscrete = 25)
+      val udf = TDigestAggregator.udf[Double](compression = 200)
       val agg = data1.agg(udf(col("j")), udf(col("x"))).first
       val (tdj, tdx) = (agg.getAs[TDigest](0), agg.getAs[TDigest](1))
       approx(tdj.mass(), count1)
@@ -74,8 +74,8 @@ object TDigestAggregationSuite extends SparkTestSuite {
 
     test("TDigestArrayAggregator") {
       assert(data2.rdd.partitions.size > 1)
-      val udfj = TDigestAggregator.udf[Int](maxDiscrete = 25)
-      val udfx = TDigestArrayAggregator.udf[Double](compression = 0.25)
+      val udfj = TDigestAggregator.udf[Int]()
+      val udfx = TDigestArrayAggregator.udf[Double](compression = 200)
       val agg = data2.agg(udfj(col("j")), udfx(col("x"))).first
       val (tdj, tdx) = (agg.getAs[TDigest](0), agg.getAs[Seq[TDigest]](1))
       approx(tdj.mass(), count2)
@@ -88,8 +88,8 @@ object TDigestAggregationSuite extends SparkTestSuite {
 
     test("TDigestMLVecAggregator") {
       assert(data3.rdd.partitions.size > 1)
-      val udfj = TDigestAggregator.udf[Int](maxDiscrete = 25)
-      val udfx = TDigestMLVecAggregator.udf(compression = 0.25)
+      val udfj = TDigestAggregator.udf[Int]()
+      val udfx = TDigestMLVecAggregator.udf(compression = 200)
       val agg = data3.agg(udfj(col("j")), udfx(col("x"))).first
       val (tdj, tdx) = (agg.getAs[TDigest](0), agg.getAs[Seq[TDigest]](1))
       approx(tdj.mass(), count3)
@@ -102,7 +102,7 @@ object TDigestAggregationSuite extends SparkTestSuite {
 
     test("TDigestMLLibVecAggregator") {
       assert(data4.rdd.partitions.size > 1)
-      val udfj = TDigestAggregator.udf[Int](maxDiscrete = 25)
+      val udfj = TDigestAggregator.udf[Int](compression = 200)
       val udfx = TDigestMLLibVecAggregator.udf(compression = 0.25)
       val agg = data4.agg(udfj(col("j")), udfx(col("x"))).first
       val (tdj, tdx) = (agg.getAs[TDigest](0), agg.getAs[Seq[TDigest]](1))

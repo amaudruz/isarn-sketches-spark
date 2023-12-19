@@ -3,18 +3,49 @@ import random
 import itertools as it
 from bisect import bisect_left, bisect_right
 
-from pyspark.sql.types import UserDefinedType, StructField, StructType, \
-    ArrayType, DoubleType, IntegerType
+from pyspark.sql.types import (
+    UserDefinedType,
+    StructField,
+    StructType,
+    ArrayType,
+    DoubleType,
+    IntegerType,
+)
 from pyspark.sql.column import Column, _to_java_column, _to_seq
 from pyspark.context import SparkContext
 
-__all__ = ['tdigestIntUDF', 'tdigestLongUDF', 'tdigestFloatUDF', 'tdigestDoubleUDF', \
-           'tdigestMLVecUDF', 'tdigestMLLibVecUDF', \
-           'tdigestIntArrayUDF', 'tdigestLongArrayUDF', 'tdigestFloatArrayUDF', 'tdigestDoubleArrayUDF', \
-           'tdigestReduceUDF', 'tdigestArrayReduceUDF', \
-           'TDigest']
+__all__ = [
+    "tdigestQuantileUDF",
+    "tdigestIntUDF",
+    "tdigestLongUDF",
+    "tdigestFloatUDF",
+    "tdigestDoubleUDF",
+    "tdigestMLVecUDF",
+    "tdigestMLLibVecUDF",
+    "tdigestIntArrayUDF",
+    "tdigestLongArrayUDF",
+    "tdigestFloatArrayUDF",
+    "tdigestDoubleArrayUDF",
+    "tdigestReduceUDF",
+    "tdigestArrayReduceUDF",
+    "TDigest",
+]
 
-def tdigestIntUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestQuantileUDF(col, quantile: float):
+    """
+    Return a UDF for extracting the given quantile out of a TDigest column.
+
+    :param quantile: the quantile between 0 and 1
+    """
+    sc = SparkContext._active_spark_context
+    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.infra.TDigest.quantileUDF(
+        quantile
+    ).apply
+    return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
+
+
+def tdigestIntUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of integer data.
 
@@ -24,11 +55,13 @@ def tdigestIntUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestIntUDF( \
-        compression, maxDiscrete).apply
+    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestIntUDF(
+        compression, maxDiscrete
+    ).apply
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestLongUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestLongUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of long integer data.
 
@@ -38,11 +71,13 @@ def tdigestLongUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestLongUDF( \
-        compression, maxDiscrete).apply
+    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestLongUDF(
+        compression, maxDiscrete
+    ).apply
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestFloatUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestFloatUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of (single precision) float data.
 
@@ -52,11 +87,13 @@ def tdigestFloatUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestFloatUDF( \
-        compression, maxDiscrete).apply
+    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestFloatUDF(
+        compression, maxDiscrete
+    ).apply
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestDoubleUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestDoubleUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of double float data.
 
@@ -66,11 +103,15 @@ def tdigestDoubleUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestDoubleUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestDoubleUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestMLVecUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestMLVecUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of ML Vector data.
 
@@ -80,11 +121,13 @@ def tdigestMLVecUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestMLVecUDF( \
-        compression, maxDiscrete).apply
+    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestMLVecUDF(
+        compression, maxDiscrete
+    ).apply
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestMLLibVecUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestMLLibVecUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of MLLib Vector data.
 
@@ -94,11 +137,15 @@ def tdigestMLLibVecUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestMLLibVecUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestMLLibVecUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestIntArrayUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestIntArrayUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of integer-array data.
 
@@ -108,11 +155,15 @@ def tdigestIntArrayUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestIntArrayUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestIntArrayUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestLongArrayUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestLongArrayUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of long-integer array data.
 
@@ -122,11 +173,15 @@ def tdigestLongArrayUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestLongArrayUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestLongArrayUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestFloatArrayUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestFloatArrayUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of (single-precision) float array data.
 
@@ -136,11 +191,15 @@ def tdigestFloatArrayUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestFloatArrayUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestFloatArrayUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestDoubleArrayUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestDoubleArrayUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of double array data.
 
@@ -150,11 +209,15 @@ def tdigestDoubleArrayUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestDoubleArrayUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestDoubleArrayUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestReduceUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestReduceUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of t-digests.
 
@@ -164,11 +227,15 @@ def tdigestReduceUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestReduceUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestReduceUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
 
-def tdigestArrayReduceUDF(col, compression=0.5, maxDiscrete=0):
+
+def tdigestArrayReduceUDF(col, compression=100.0, maxDiscrete=0):
     """
     Return a UDF for aggregating a column of t-digest vectors.
 
@@ -178,18 +245,25 @@ def tdigestArrayReduceUDF(col, compression=0.5, maxDiscrete=0):
         continuous (default 0)
     """
     sc = SparkContext._active_spark_context
-    tdapply = sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestArrayReduceUDF( \
-        compression, maxDiscrete).apply
+    tdapply = (
+        sc._jvm.org.isarnproject.sketches.spark.tdigest.functions.tdigestArrayReduceUDF(
+            compression, maxDiscrete
+        ).apply
+    )
     return Column(tdapply(_to_seq(sc, [col], _to_java_column)))
+
 
 class TDigestUDT(UserDefinedType):
     @classmethod
     def sqlType(cls):
-        return StructType([
-            StructField("compression", DoubleType(), False),
-            StructField("maxDiscrete", IntegerType(), False),
-            StructField("cent", ArrayType(DoubleType(), False), False),
-            StructField("mass", ArrayType(DoubleType(), False), False)])
+        return StructType(
+            [
+                StructField("compression", DoubleType(), False),
+                StructField("maxDiscrete", IntegerType(), False),
+                StructField("cent", ArrayType(DoubleType(), False), False),
+                StructField("mass", ArrayType(DoubleType(), False), False),
+            ]
+        )
 
     @classmethod
     def module(cls):
@@ -211,6 +285,7 @@ class TDigestUDT(UserDefinedType):
     def deserialize(self, datum):
         return TDigest(datum[0], datum[1], datum[2], datum[3])
 
+
 class TDigest(object):
     """
     A T-Digest sketch of a cumulative numeric distribution.
@@ -230,21 +305,28 @@ class TDigest(object):
         assert self.maxDiscrete >= 0, "maxDiscrete must be >= 0"
         self._cent = [float(v) for v in cent]
         self._mass = [float(v) for v in mass]
-        assert len(self._mass) == len(self._cent), "cluster mass and cent must have same dimension"
+        assert len(self._mass) == len(
+            self._cent
+        ), "cluster mass and cent must have same dimension"
         self.nclusters = len(self._cent)
         # Current implementation is "read only" so we can just store cumulative sum here.
         # To support updating, 'csum' would need to become a Fenwick tree array
         self._csum = list(it.accumulate(self._mass))
 
     def __repr__(self):
-        return "TDigest(%s, %s, %s, %s)" % \
-            (repr(self.compression), repr(self.maxDiscrete), repr(self._cent), repr(self._mass))
+        return "TDigest(%s, %s, %s, %s)" % (
+            repr(self.compression),
+            repr(self.maxDiscrete),
+            repr(self._cent),
+            repr(self._mass),
+        )
 
     def mass(self):
         """
         Total mass accumulated by this TDigest
         """
-        if len(self._csum) == 0: return 0.0
+        if len(self._csum) == 0:
+            return 0.0
         return self._csum[-1]
 
     def size(self):
@@ -260,7 +342,15 @@ class TDigest(object):
         return len(self._cent) == 0
 
     def __reduce__(self):
-        return (self.__class__, (self.compression, self.maxDiscrete, self._cent, self._mass, ))
+        return (
+            self.__class__,
+            (
+                self.compression,
+                self.maxDiscrete,
+                self._cent,
+                self._mass,
+            ),
+        )
 
     def _lmcovj(self, m):
         assert self.nclusters >= 2
@@ -278,8 +368,10 @@ class TDigest(object):
     # emulates behavior from isarn java TDigest, which computes
     # cumulative sum via a Fenwick tree
     def _ftSum(self, j):
-        if (j < 0): return 0.0
-        if (j >= self.nclusters): return self.mass()
+        if j < 0:
+            return 0.0
+        if j >= self.nclusters:
+            return self.mass()
         return self._csum[j]
 
     def cdf(self, xx):
@@ -288,8 +380,10 @@ class TDigest(object):
         """
         x = float(xx)
         j1 = self._rcovj(x)
-        if (j1 < 0): return 0.0
-        if (j1 >= self.nclusters - 1): return 1.0
+        if j1 < 0:
+            return 0.0
+        if j1 >= self.nclusters - 1:
+            return 1.0
         j2 = j1 + 1
         c1 = self._cent[j1]
         c2 = self._cent[j2]
@@ -308,11 +402,16 @@ class TDigest(object):
         Returns NaN for any q > 1 or < 0, or if this TDigest is empty.
         """
         q = float(qq)
-        if (q < 0.0) or (q > 1.0): return float('nan')
-        if (self.nclusters == 0): return float('nan')
-        if (self.nclusters == 1): return self._cent[0]
-        if (q == 0.0): return self._cent[0]
-        if (q == 1.0): return self._cent[self.nclusters - 1]
+        if (q < 0.0) or (q > 1.0):
+            return float("nan")
+        if self.nclusters == 0:
+            return float("nan")
+        if self.nclusters == 1:
+            return self._cent[0]
+        if q == 0.0:
+            return self._cent[0]
+        if q == 1.0:
+            return self._cent[self.nclusters - 1]
         m = q * self.mass()
         j1 = self._rmcovj(m)
         j2 = j1 + 1
@@ -343,9 +442,12 @@ class TDigest(object):
         Returns NaN for any q > 1 or < 0, or if this TDigest is empty.
         """
         q = float(qq)
-        if (q < 0.0) or (q > 1.0): return float('nan')
-        if self.nclusters == 0: return float('nan')
-        if self.nclusters == 1: return self._cent[0]
+        if (q < 0.0) or (q > 1.0):
+            return float("nan")
+        if self.nclusters == 0:
+            return float("nan")
+        if self.nclusters == 1:
+            return self._cent[0]
         m = q * self.mass()
         j = self._lmcovj(m)
         return self._cent[j]
