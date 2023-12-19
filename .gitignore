@@ -1,6 +1,9 @@
 *.class
 *.log
 
+**__pycache__
+*.ipynb
+
 .idea
 .DS_Store
 # sbt specific

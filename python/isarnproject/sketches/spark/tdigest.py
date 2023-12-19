@@ -2,6 +2,8 @@ import sys
 import random
 import itertools as it
 from bisect import bisect_left, bisect_right
+import struct
+from io import BytesIO
 
 from pyspark.sql.types import (
     UserDefinedType,
@@ -10,6 +12,7 @@ from pyspark.sql.types import (
     ArrayType,
     DoubleType,
     IntegerType,
+    BinaryType,
 )
 from pyspark.sql.column import Column, _to_java_column, _to_seq
 from pyspark.context import SparkContext
@@ -256,14 +259,7 @@ def tdigestArrayReduceUDF(col, compression=100.0, maxDiscrete=0):
 class TDigestUDT(UserDefinedType):
     @classmethod
     def sqlType(cls):
-        return StructType(
-            [
-                StructField("compression", DoubleType(), False),
-                StructField("maxDiscrete", IntegerType(), False),
-                StructField("cent", ArrayType(DoubleType(), False), False),
-                StructField("mass", ArrayType(DoubleType(), False), False),
-            ]
-        )
+        return BinaryType()
 
     @classmethod
     def module(cls):
@@ -278,12 +274,12 @@ class TDigestUDT(UserDefinedType):
 
     def serialize(self, obj):
         if isinstance(obj, TDigest):
-            return (obj.compression, obj.maxDiscrete, obj._cent, obj._mass)
+            return obj.serialize()
         else:
             raise TypeError("cannot serialize %r of type %r" % (obj, type(obj)))
 
     def deserialize(self, datum):
-        return TDigest(datum[0], datum[1], datum[2], datum[3])
+        return TDigest.deserialize(datum)
 
 
 class TDigest(object):
@@ -298,7 +294,17 @@ class TDigest(object):
     # and in the same file.
     __UDT__ = TDigestUDT()
 
-    def __init__(self, compression, maxDiscrete, cent, mass):
+    def __init__(
+        self,
+        compression,
+        maxDiscrete,
+        cent,
+        mass,
+        format_tag,
+        min_val=None,
+        max_val=None,
+        total_weight=None,
+    ):
         self.compression = float(compression)
         self.maxDiscrete = int(maxDiscrete)
         assert self.compression > 0.0, "compression must be > 0"
@@ -313,6 +319,11 @@ class TDigest(object):
         # To support updating, 'csum' would need to become a Fenwick tree array
         self._csum = list(it.accumulate(self._mass))
 
+        self.format_tag = format_tag
+        self.min_val = min_val or min(cent)
+        self.max_val = max_val or max(cent)
+        self.total_weight = total_weight or sum(mass)
+
     def __repr__(self):
         return "TDigest(%s, %s, %s, %s)" % (
             repr(self.compression),
@@ -320,6 +331,82 @@ class TDigest(object):
             repr(self._cent),
             repr(self._mass),
         )
+
+    @classmethod
+    def deserialize(cls, bytes) -> "TDigest":
+        # Wrap the bytes in a BytesIO object for easier reading
+        input_buffer = BytesIO(bytes)
+
+        # Read the data in the same order it was written
+        format_tag = struct.unpack("B", input_buffer.read(1))[0]
+
+        min_val = struct.unpack("d", input_buffer.read(8))[0]
+        max_val = struct.unpack("d", input_buffer.read(8))[0]
+        compression = struct.unpack("d", input_buffer.read(8))[0]
+        total_weight = struct.unpack("d", input_buffer.read(8))[0]
+        centroid_count = struct.unpack("i", input_buffer.read(4))[0]
+
+        # Read the centroids
+        centroids = []
+        weights = []
+        for _ in range(centroid_count):
+            mean = struct.unpack("d", input_buffer.read(8))[0]
+            centroids.append(mean)
+
+        for i in range(centroid_count):
+            weight = struct.unpack("d", input_buffer.read(8))[0]
+            weights.append(weight)
+
+        # Check if we have reached the end of the buffer
+        if input_buffer.read(1):
+            raise ValueError("Extra data found after expected serialized size")
+
+        return TDigest(
+            compression=compression,
+            maxDiscrete=0,
+            cent=centroids,
+            mass=weights,
+            format_tag=format_tag,
+            min_val=min_val,
+            max_val=max_val,
+            total_weight=total_weight,
+        )
+
+    def serialize(self) -> bytes:
+        # Calculate the size of the serialized data
+        centroid_count = len(self._cent)
+        serialized_size_in_bytes = (
+            1 + 4 * 8 + 4 + centroid_count * 8 * 2
+        )  # 1 byte for format tag, 4 doubles, 1 int, centroids
+
+        # Create a byte buffer to hold the serialized data
+        buffer = bytearray(serialized_size_in_bytes)
+
+        # Pack the data into the buffer
+        offset = 0
+        struct.pack_into("B", buffer, offset, self.format_tag)
+        offset += 1
+        struct.pack_into("d", buffer, offset, self.min_val)
+        offset += 8
+        struct.pack_into("d", buffer, offset, self.max_val)
+        offset += 8
+        struct.pack_into("d", buffer, offset, self.compression)
+        offset += 8
+        struct.pack_into("d", buffer, offset, self.total_weight)
+        offset += 8
+        struct.pack_into("i", buffer, offset, centroid_count)
+        offset += 4
+
+        # Pack the centroids
+        for mean in self._cent:
+            struct.pack_into("d", buffer, offset, mean)
+            offset += 8
+
+        for weight in self._mass:
+            struct.pack_into("d", buffer, offset, weight)
+            offset += 8
+
+        return bytes(buffer)
 
     def mass(self):
         """
